@@ -54,7 +54,7 @@ const Sidebar: React.FC = () => {
           }
         )}
         initial={false}
-        animate={isSidebarOpen ? "visible" : "hidden"}
+        animate={isSidebarOpen || (typeof window !== 'undefined' && window.innerWidth >= 1024) ? "visible" : "hidden"}
         variants={sidebarVariants}
       >
         <div className="flex items-center space-x-3 mb-8">
