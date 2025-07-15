@@ -50,7 +50,7 @@ const Sidebar: React.FC = () => {
           "lg:relative lg:translate-x-0 lg:opacity-100 lg:flex lg:min-w-[256px]",
           {
             "translate-x-0 opacity-100": isSidebarOpen,
-            "-translate-x-full opacity-0": !isSidebarOpen && !window.matchMedia('(min-width: 1024px)').matches,
+            "-translate-x-full opacity-0 lg:translate-x-0 lg:opacity-100": !isSidebarOpen,
           }
         )}
         initial={false}
