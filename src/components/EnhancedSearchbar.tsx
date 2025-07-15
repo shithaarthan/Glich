@@ -139,7 +139,7 @@ const EnhancedSearchbar: React.FC<EnhancedSearchbarProps> = ({
                         />
                         <span className="text-xs text-textSecondary">@{post.author.username}</span>
                       </div>
-                      <p className="text-sm text-text line-clamp-2">{post.call}</p>
+                      <p className="text-sm text-text truncate">{post.call}</p>
                       {post.tags && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {post.tags.slice(0, 3).map((tag, index) => (
