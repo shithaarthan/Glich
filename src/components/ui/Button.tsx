@@ -16,6 +16,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       primary: 'bg-primary text-white hover:bg-primary-hover focus:ring-primary',
       secondary: 'bg-surface text-text hover:bg-border focus:ring-primary',
       ghost: 'bg-transparent text-text-muted hover:bg-surface hover:text-text',
+      outline: 'border border-border bg-transparent text-text hover:bg-surface focus:ring-primary',
     };
 
     const sizeStyles = {
