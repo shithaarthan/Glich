@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Edit, Rss, UserPlus } from 'lucide-react';
+import { Edit, Rss } from 'lucide-react';
 import Button from '@/components/ui/Button';
-import EchoCard from '@/components/EchoCard';
+import InteractiveEchoCard from '@/components/InteractiveEchoCard';
+import FollowButton from '@/components/FollowButton';
 import { cn } from '@/lib/utils';
 import { useModalStore } from '@/store/modalStore';
 import { useAuthStore } from '@/store/authStore';
@@ -56,7 +57,7 @@ const Profile: React.FC = () => {
     stats: {
       echos: 24,
       amplifies: '12.k',
-      followers: '5.8k',
+      followers: 5800,
     },
   };
 
@@ -89,9 +90,11 @@ const Profile: React.FC = () => {
                 </Button>
               </>
             ) : (
-              <Button variant="primary">
-                <UserPlus size={16} className="mr-2" /> Follow
-              </Button>
+              <FollowButton 
+                userId={userId || 'demo-user'} 
+                initialFollowing={false}
+                initialFollowers={mockUserData.stats.followers}
+              />
             )}
           </div>
         </div>
@@ -106,7 +109,7 @@ const Profile: React.FC = () => {
         <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 text-text-muted">
           <p><strong className="text-text">{mockUserData.stats.echos}</strong> Echos</p>
           <p><strong className="text-text">{mockUserData.stats.amplifies}</strong> Amplifies</p>
-          <p><strong className="text-text">{mockUserData.stats.followers}</strong> Followers</p>
+          <p><strong className="text-text">{mockUserData.stats.followers.toLocaleString()}</strong> Followers</p>
         </div>
       </div>
 
@@ -119,8 +122,8 @@ const Profile: React.FC = () => {
 
       <div className="mt-8">
         {activeTab === 'echos' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {mockPosts.map(post => <EchoCard key={post.id} post={post} />)}
+          <div className="space-y-6">
+            {mockPosts.map(post => <InteractiveEchoCard key={post.id} post={post} />)}
           </div>
         )}
         {activeTab === 'amplified' && (
