@@ -1,15 +1,17 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaHome, FaUser, FaUsers, FaBroadcastTower, FaSignOutAlt, FaBrain } from 'react-icons/fa'; // React Icons
+import { FaHome, FaUser, FaUsers, FaBroadcastTower, FaSignOutAlt, FaBrain, FaPlus } from 'react-icons/fa';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
+import { useModalStore } from '@/store/modalStore';
 import Button from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
 const Sidebar: React.FC = () => {
   const { user, logout } = useAuthStore();
   const { isSidebarOpen, closeSidebar } = useUIStore();
+  const { openCreateEchoModal } = useModalStore();
   const location = useLocation();
 
   const navItems = [
@@ -22,6 +24,11 @@ const Sidebar: React.FC = () => {
   const sidebarVariants = {
     hidden: { x: '-100%', opacity: 0 },
     visible: { x: '0%', opacity: 1, transition: { type: 'spring', stiffness: 100, damping: 20 } },
+  };
+
+  const handleCreateEcho = () => {
+    openCreateEchoModal();
+    closeSidebar(); // Close sidebar on mobile after action
   };
 
   return (
@@ -40,13 +47,13 @@ const Sidebar: React.FC = () => {
       <motion.aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border p-6 flex flex-col",
-          "lg:relative lg:translate-x-0 lg:opacity-100 lg:flex lg:min-w-[256px]", // Always visible on large screens
+          "lg:relative lg:translate-x-0 lg:opacity-100 lg:flex lg:min-w-[256px]",
           {
             "translate-x-0 opacity-100": isSidebarOpen,
-            "-translate-x-full opacity-0": !isSidebarOpen && !window.matchMedia('(min-width: 1024px)').matches, // Hidden on mobile if not open
+            "-translate-x-full opacity-0": !isSidebarOpen && !window.matchMedia('(min-width: 1024px)').matches,
           }
         )}
-        initial={false} // Control animation manually based on isSidebarOpen
+        initial={false}
         animate={isSidebarOpen ? "visible" : "hidden"}
         variants={sidebarVariants}
       >
@@ -55,12 +62,24 @@ const Sidebar: React.FC = () => {
           <h2 className="text-2xl font-bold text-text">Glitchary</h2>
         </div>
 
+        {/* Create Echo Button */}
+        <div className="mb-6">
+          <Button 
+            variant="primary" 
+            className="w-full flex items-center justify-center space-x-2"
+            onClick={handleCreateEcho}
+          >
+            <FaPlus size={18} />
+            <span>Create Echo</span>
+          </Button>
+        </div>
+
         <nav className="flex-1 space-y-2">
           {navItems.map((item) => (
             <Link
               key={item.name}
               to={item.path}
-              onClick={closeSidebar} // Close sidebar on navigation for mobile
+              onClick={closeSidebar}
               className={cn(
                 "flex items-center space-x-3 p-3 rounded-lg transition-colors duration-200",
                 "hover:bg-border hover:text-primary",
@@ -90,7 +109,7 @@ const Sidebar: React.FC = () => {
             className="w-full flex items-center justify-center space-x-2"
             onClick={() => {
               logout();
-              closeSidebar(); // Close sidebar after logout
+              closeSidebar();
             }}
           >
             <FaSignOutAlt size={18} />

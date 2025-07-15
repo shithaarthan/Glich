@@ -3,94 +3,78 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'sonner';
-import { motion } from 'framer-motion'; // Import motion for overlay
 
 import Feed from './pages/Feed';
-// import Login from './pages/Login'; // Removed
-// import SignUp from './pages/SignUp'; // Removed
 import Auth from './pages/Auth';
+import Login from './pages/Login';
+import SignUp from './pages/SignUp';
 import Profile from './pages/Profile';
 import Communities from './pages/Communities';
 import TuneIn from './pages/TuneIn';
+import Activity from './pages/Activity';
 
-import Layout from './components/layout/Layout'; // Keep if used elsewhere, but not directly in App.tsx for main layout
-import Header from './components/layout/Header';
-import Sidebar from './components/layout/Sidebar';
-
+import MainLayout from './components/layout/MainLayout';
 import { useAuthStore } from './store/authStore';
-import { useUIStore } from './store/uiStore'; // Import useUIStore
 
 const queryClient = new QueryClient();
+
+// Protected Route Component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isDemoMode } = useAuthStore();
+  const isUserLoggedIn = isAuthenticated || isDemoMode;
+
+  if (!isUserLoggedIn) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return <>{children}</>;
+};
 
 // Component to handle root path redirection
 function RootRedirect() {
   const { isAuthenticated, isDemoMode } = useAuthStore();
   const isUserLoggedIn = isAuthenticated || isDemoMode;
-  const location = useLocation();
 
-  // If the user is logged in, redirect to feed. Otherwise, redirect to auth.
-  // This component will only be rendered for the root path '/'.
   if (isUserLoggedIn) {
     return <Navigate to="/feed" replace />;
   } else {
-    // If the current location is already '/auth', don't redirect again to avoid loops.
-    // Otherwise, redirect to '/auth'.
-    return location.pathname === '/auth' ? <Auth /> : <Navigate to="/auth" replace />;
+    return <Navigate to="/auth" replace />;
   }
 }
 
 function App() {
   const { isAuthenticated, isDemoMode } = useAuthStore();
   const isUserLoggedIn = isAuthenticated || isDemoMode;
-  const { isSidebarOpen, closeSidebar } = useUIStore(); // Get sidebar state and close function
 
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <div className="flex min-h-screen bg-background text-text">
-          {isUserLoggedIn && <Sidebar />}
+        <Routes>
+          {/* Root path handling */}
+          <Route path="/" element={<RootRedirect />} />
 
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {isUserLoggedIn && <Header />}
+          {/* Public Routes */}
+          <Route path="/auth" element={!isUserLoggedIn ? <Auth /> : <Navigate to="/feed" replace />} />
+          <Route path="/login" element={!isUserLoggedIn ? <Login /> : <Navigate to="/feed" replace />} />
+          <Route path="/signup" element={!isUserLoggedIn ? <SignUp /> : <Navigate to="/feed" replace />} />
 
-            <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-8">
-              <Routes>
-                {/* Root path handling */}
-                <Route path="/" element={<RootRedirect />} />
+          {/* Protected Routes wrapped in MainLayout */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
+          }>
+            <Route path="feed" element={<Feed />} />
+            <Route path="profile/:userId" element={<Profile />} />
+            <Route path="communities" element={<Communities />} />
+            <Route path="tune-in" element={<TuneIn />} />
+            <Route path="activity" element={<Activity />} />
+          </Route>
 
-                {/* Authentication Routes */}
-                <Route path="/auth" element={!isUserLoggedIn ? <Auth /> : <Navigate to="/feed" replace />} />
-                {/* Removed Login and SignUp routes */}
-                {/* <Route path="/login" element={<Login />} /> */}
-                {/* <Route path="/signup" element={<SignUp />} /> */}
-
-                {/* Protected Routes */}
-                <Route
-                  path="/feed"
-                  element={isUserLoggedIn ? <Feed /> : <Navigate to="/auth" replace />}
-                />
-                <Route
-                  path="/profile/:userId"
-                  element={isUserLoggedIn ? <Profile /> : <Navigate to="/auth" replace />}
-                />
-                <Route
-                  path="/communities"
-                  element={isUserLoggedIn ? <Communities /> : <Navigate to="/auth" replace />}
-                />
-                <Route
-                  path="/tune-in"
-                  element={isUserLoggedIn ? <TuneIn /> : <Navigate to="/auth" replace />}
-                />
-
-                {/* Fallback Route: For any other paths, redirect based on auth status */}
-                <Route
-                  path="*"
-                  element={isUserLoggedIn ? <Navigate to="/feed" replace /> : <Navigate to="/auth" replace />}
-                />
-              </Routes>
-            </main>
-          </div>
-        </div>
+          {/* Fallback Route */}
+          <Route path="*" element={isUserLoggedIn ? <Navigate to="/feed" replace /> : <Navigate to="/auth" replace />} />
+        </Routes>
+        
         <Toaster richColors position="top-right" />
         <ReactQueryDevtools initialIsOpen={false} />
       </Router>

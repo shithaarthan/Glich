@@ -1,32 +1,61 @@
 import React from 'react';
+import { useForm } from 'react-hook-form';
 import Modal from '@/components/ui/Modal';
 import { useModalStore } from '@/store/modalStore';
 import Button from '@/components/ui/Button';
 import Textarea from '@/components/ui/Textarea';
 
+interface CreateEchoFormData {
+  call: string;
+  response: string;
+}
+
 const CreateEchoModal: React.FC = () => {
   const { isCreateEchoModalOpen, closeCreateEchoModal } = useModalStore();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateEchoFormData>();
+
+  const onSubmit = (data: CreateEchoFormData) => {
+    console.log('Create Echo Form Data:', data);
+    // Here you would typically send the data to your backend
+    reset(); // Reset the form
+    closeCreateEchoModal(); // Close the modal
+  };
+
+  const handleClose = () => {
+    reset(); // Reset form when closing
+    closeCreateEchoModal();
+  };
 
   return (
     <Modal
       isOpen={isCreateEchoModalOpen}
-      onClose={closeCreateEchoModal}
+      onClose={handleClose}
       title="Create a new Echo"
     >
-      <div className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="font-mono text-sm">
           <label className="text-primary font-bold mb-2 uppercase tracking-wider block">THE CALL</label>
-          <Textarea placeholder="What question will you ask the machine?" />
+          <Textarea 
+            {...register('call', { required: 'The call is required' })}
+            placeholder="What question will you ask the machine?" 
+          />
+          {errors.call && <p className="text-red-500 text-sm mt-1">{errors.call.message}</p>}
         </div>
+        
         <div className="font-mono text-sm">
           <label className="text-secondary font-bold mb-2 uppercase tracking-wider block">THE RETURN</label>
-          <Textarea placeholder="What strange wisdom did it offer back?" />
+          <Textarea 
+            {...register('response', { required: 'The response is required' })}
+            placeholder="What strange wisdom did it offer back?" 
+          />
+          {errors.response && <p className="text-red-500 text-sm mt-1">{errors.response.message}</p>}
         </div>
+        
         <div className="flex justify-end space-x-3">
-          <Button variant="secondary" onClick={closeCreateEchoModal}>Cancel</Button>
-          <Button variant="primary">Echo</Button>
+          <Button type="button" variant="secondary" onClick={handleClose}>Cancel</Button>
+          <Button type="submit" variant="primary">Echo</Button>
         </div>
-      </div>
+      </form>
     </Modal>
   );
 };
