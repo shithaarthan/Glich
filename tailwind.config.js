@@ -21,6 +21,7 @@ export default {
           DEFAULT: '#F5F5F5',
           muted: '#A3A3A3',
         },
+        textSecondary: '#A3A3A3',
         border: '#2D2D2D',
       },
       maxWidth: {
@@ -37,7 +38,5 @@ export default {
       },
     },
   },
-  plugins: [
-    require('@tailwindcss/line-clamp'),
-  ],
+  plugins: [],
 }
