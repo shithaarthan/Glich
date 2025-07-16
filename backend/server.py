@@ -51,11 +51,11 @@ async def get_current_user(request: Request):
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Token verification failed: {str(e)}")
 
-@app.get("/")
+@app.get("/api/")
 async def read_root():
     return {"message": "Welcome to the backend!"}
 
-@app.get("/profiles")
+@app.get("/api/profiles")
 async def get_profiles():
     try:
         response = supabase.table("profiles").select("*").execute()
@@ -66,7 +66,7 @@ async def get_profiles():
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/auth/google/login")
+@app.get("/api/auth/google/login")
 async def google_login_url():
     try:
         auth_url = supabase.auth.get_provider_oauth_url("google")
@@ -74,7 +74,7 @@ async def google_login_url():
     except Exception as e:
         return JSONResponse({"error": str(e)}, media_type="application/json")
 
-@app.get("/auth/google/signup")
+@app.get("/api/auth/google/signup")
 async def google_signup_url():
     try:
         auth_url = supabase.auth.get_provider_oauth_url("google")
@@ -82,7 +82,7 @@ async def google_signup_url():
     except Exception as e:
         return JSONResponse({"error": str(e)})
 
-@app.get("/auth/google/callback")
+@app.get("/api/auth/google/callback")
 async def google_callback(code: str):
     try:
         response = supabase.auth.exchange_code_for_session(code)
@@ -97,7 +97,7 @@ async def google_callback(code: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An internal error occurred during OAuth callback: {str(e)}")
 
-@app.post("/profiles")
+@app.post("/api/profiles")
 async def create_profile(
     user_id: str,
     username: str,
@@ -132,7 +132,7 @@ async def create_profile(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An internal error occurred during profile creation: {str(e)}")
 
-@app.get("/profiles/{user_id}")
+@app.get("/api/profiles/{user_id}")
 async def get_profile(user_id: str, current_user_id: str = Depends(get_current_user)):
     # For simplicity, let's allow fetching any profile, but if it were restricted,
     # we'd add a check here like: if user_id != current_user_id: raise HTTPException(status_code=403, detail="Forbidden")
@@ -147,7 +147,7 @@ async def get_profile(user_id: str, current_user_id: str = Depends(get_current_u
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An internal error occurred while fetching profile: {str(e)}")
 
-@app.put("/profiles/{user_id}")
+@app.put("/api/profiles/{user_id}")
 async def update_profile(
     user_id: str,
     username: str = None,
@@ -185,7 +185,7 @@ async def update_profile(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An internal error occurred during profile update: {str(e)}")
 
-@app.post("/calls")
+@app.post("/api/calls")
 async def create_call(
     user_id: str,
     prompt: str,
@@ -212,7 +212,7 @@ async def create_call(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An internal error occurred during call creation: {str(e)}")
 
-@app.get("/calls")
+@app.get("/api/calls")
 async def get_calls(current_user_id: str = Depends(get_current_user)):
     # Assuming calls are only visible to logged-in users
     # If calls are public, this dependency might be removed or adjusted
@@ -226,7 +226,7 @@ async def get_calls(current_user_id: str = Depends(get_current_user)):
     except Exception as e:
         return {"error": str(e)}
 
-@app.post("/responses")
+@app.post("/api/responses")
 async def create_response(
     call_id: str,
     user_id: str,
@@ -255,7 +255,7 @@ async def create_response(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An internal error occurred during response creation: {str(e)}")
 
-@app.get("/responses")
+@app.get("/api/responses")
 async def get_responses(call_id: str = None, user_id: str = None, current_user_id: str = Depends(get_current_user)):
     # If filtering by user_id, ensure it matches the current user
     if user_id and user_id != current_user_id:
@@ -286,7 +286,7 @@ async def get_responses(call_id: str = None, user_id: str = None, current_user_i
     except Exception as e:
         return {"error": str(e)}
 
-@app.post("/echoes")
+@app.post("/api/echoes")
 async def create_echo(
     call_id: str,
     response_id: str,
@@ -315,7 +315,7 @@ async def create_echo(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An internal error occurred during echo creation: {str(e)}")
 
-@app.get("/echoes")
+@app.get("/api/echoes")
 async def get_echoes(call_id: str = None, response_id: str = None, user_id: str = None, current_user_id: str = Depends(get_current_user)):
     # If user_id is specified and doesn't match current_user_id, forbid access
     if user_id and user_id != current_user_id:
