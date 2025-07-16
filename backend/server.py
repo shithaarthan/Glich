@@ -339,3 +339,104 @@ async def get_echoes(call_id: str = None, response_id: str = None, user_id: str 
             return {"message": "No echoes found"}
     except Exception as e:
         return {"error": str(e)}
+
+@app.post("/api/calls/{post_id}/amplify")
+async def amplify_call(post_id: str, current_user_id: str = Depends(get_current_user)):
+    try:
+        # Check if already amplified
+        existing_amplify = supabase.table("amplifies").select("*").eq("call_id", post_id).eq("user_id", current_user_id).execute()
+        
+        if existing_amplify.data:
+            # If already amplified, remove amplify (toggle)
+            supabase.table("amplifies").delete().eq("call_id", post_id).eq("user_id", current_user_id).execute()
+            return {"message": "Amplify removed", "amplified": False}
+        else:
+            # Add amplify
+            amplify_data = {
+                "call_id": post_id,
+                "user_id": current_user_id
+            }
+            response = supabase.table("amplifies").insert(amplify_data).execute()
+            
+            if response.data:
+                return {"message": "Call amplified successfully", "amplified": True}
+            else:
+                raise HTTPException(status_code=400, detail="Failed to amplify call")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred during amplify: {str(e)}")
+
+@app.post("/api/calls/{post_id}/bookmark")
+async def bookmark_call(post_id: str, current_user_id: str = Depends(get_current_user)):
+    try:
+        # Check if already bookmarked
+        existing_bookmark = supabase.table("bookmarks").select("*").eq("call_id", post_id).eq("user_id", current_user_id).execute()
+        
+        if existing_bookmark.data:
+            # If already bookmarked, remove bookmark (toggle)
+            supabase.table("bookmarks").delete().eq("call_id", post_id).eq("user_id", current_user_id).execute()
+            return {"message": "Bookmark removed", "bookmarked": False}
+        else:
+            # Add bookmark
+            bookmark_data = {
+                "call_id": post_id,
+                "user_id": current_user_id
+            }
+            response = supabase.table("bookmarks").insert(bookmark_data).execute()
+            
+            if response.data:
+                return {"message": "Call bookmarked successfully", "bookmarked": True}
+            else:
+                raise HTTPException(status_code=400, detail="Failed to bookmark call")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred during bookmark: {str(e)}")
+
+@app.get("/api/search")
+async def search_content(query: str, current_user_id: str = Depends(get_current_user)):
+    try:
+        # Search in calls (posts)
+        calls_response = supabase.table("calls").select("*").ilike("prompt", f"%{query}%").execute()
+        
+        # Search in profiles
+        profiles_response = supabase.table("profiles").select("*").ilike("username", f"%{query}%").execute()
+        
+        return {
+            "calls": calls_response.data or [],
+            "profiles": profiles_response.data or [],
+            "query": query
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred during search: {str(e)}")
+
+@app.get("/api/calls/{post_id}/interactions")
+async def get_call_interactions(post_id: str, current_user_id: str = Depends(get_current_user)):
+    try:
+        # Get responses count
+        responses = supabase.table("responses").select("*").eq("call_id", post_id).execute()
+        
+        # Get echoes count
+        echoes = supabase.table("echoes").select("*").eq("call_id", post_id).execute()
+        
+        # Get amplifies count
+        amplifies = supabase.table("amplifies").select("*").eq("call_id", post_id).execute()
+        
+        # Get bookmarks count
+        bookmarks = supabase.table("bookmarks").select("*").eq("call_id", post_id).execute()
+        
+        # Check if current user has interacted
+        user_amplified = any(amp["user_id"] == current_user_id for amp in (amplifies.data or []))
+        user_bookmarked = any(book["user_id"] == current_user_id for book in (bookmarks.data or []))
+        user_echoed = any(echo["user_id"] == current_user_id for echo in (echoes.data or []))
+        
+        return {
+            "responses_count": len(responses.data or []),
+            "echoes_count": len(echoes.data or []),
+            "amplifies_count": len(amplifies.data or []),
+            "bookmarks_count": len(bookmarks.data or []),
+            "user_amplified": user_amplified,
+            "user_bookmarked": user_bookmarked,
+            "user_echoed": user_echoed,
+            "responses": responses.data or [],
+            "echoes": echoes.data or []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred fetching interactions: {str(e)}")
