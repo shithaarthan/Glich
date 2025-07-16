@@ -15,8 +15,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/auth': {
-        target: 'http://localhost:8000',
+      '/api': {
+        target: 'http://localhost:8001',
         changeOrigin: true
       }
     }
