@@ -69,16 +69,28 @@ async def get_profiles():
 @app.get("/api/auth/google/login")
 async def google_login_url():
     try:
-        auth_url = supabase.auth.get_provider_oauth_url("google")
-        return JSONResponse({"url": auth_url}, media_type="application/json")
+        # Use sign_in_with_oauth to get the OAuth URL
+        auth_response = supabase.auth.sign_in_with_oauth({
+            "provider": "google",
+            "options": {
+                "redirect_to": f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000')}/auth/callback"
+            }
+        })
+        return JSONResponse({"url": auth_response.url}, media_type="application/json")
     except Exception as e:
         return JSONResponse({"error": str(e)}, media_type="application/json")
 
 @app.get("/api/auth/google/signup")
 async def google_signup_url():
     try:
-        auth_url = supabase.auth.get_provider_oauth_url("google")
-        return JSONResponse({"url": auth_url}, media_type="application/json")
+        # Use sign_in_with_oauth to get the OAuth URL (same as login for OAuth)
+        auth_response = supabase.auth.sign_in_with_oauth({
+            "provider": "google",
+            "options": {
+                "redirect_to": f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000')}/auth/callback"
+            }
+        })
+        return JSONResponse({"url": auth_response.url}, media_type="application/json")
     except Exception as e:
         return JSONResponse({"error": str(e)})
 
