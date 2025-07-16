@@ -42,8 +42,8 @@ export const useAuthStore = create<AuthState>()(
       loginWithGoogle: async () => {
         console.log('loginWithGoogle function called');
         try {
-          console.log('Fetching http://localhost:8000/auth/google/login...');
-          const response = await fetch('http://localhost:8000/auth/google/login');
+          console.log('Fetching /api/auth/google/login...');
+          const response = await fetch('/api/auth/google/login');
           console.log('Fetch response:', response);
           if (!response.ok) {
             console.error('Error getting Google OAuth URL:', response.status, response.statusText);
