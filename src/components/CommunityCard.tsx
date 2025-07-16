@@ -1,6 +1,7 @@
 import React from 'react';
 import { Users } from 'lucide-react';
 import Button from './ui/Button';
+import { Link } from 'react-router-dom';
 
 interface CommunityCardProps {
   community: {
@@ -14,7 +15,7 @@ interface CommunityCardProps {
 
 const CommunityCard: React.FC<CommunityCardProps> = ({ community }) => {
   return (
-    <div className="bg-surface border border-border rounded-xl overflow-hidden flex flex-col group transform hover:-translate-y-1 transition-transform duration-300 shadow-lg">
+    <Link to={`/community/${community.id}`} className="bg-surface border border-border rounded-xl overflow-hidden flex flex-col group transform hover:-translate-y-1 transition-transform duration-300 shadow-lg">
       <img src={community.banner} alt={community.name} className="h-32 w-full object-cover" />
       <div className="p-4 flex-grow flex flex-col">
         <h3 className="text-lg font-bold text-text mb-1">{community.name}</h3>
@@ -24,10 +25,10 @@ const CommunityCard: React.FC<CommunityCardProps> = ({ community }) => {
             <Users size={16} className="mr-2" />
             {community.members.toLocaleString()} members
           </div>
-          <Button size="sm" variant="secondary">Join</Button>
+          <Button size="sm" variant="secondary" onClick={(e) => e.preventDefault()}>Join</Button>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 

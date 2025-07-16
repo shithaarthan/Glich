@@ -6,6 +6,9 @@ interface User {
   name: string | null;
   email: string | null;
   avatarUrl: string | null;
+  username?: string; // Added username to match interactionStore
+  isDemoMode?: boolean;
+  isAuthenticated?: boolean;
 }
 
 interface AuthState {
@@ -24,6 +27,9 @@ const mockUser = {
   name: 'Demo User',
   email: 'demo@example.com',
   avatarUrl: 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1', // Example placeholder
+  username: 'demo_user', // Added mock username
+  isDemoMode: true,
+  isAuthenticated: true,
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -34,14 +40,26 @@ export const useAuthStore = create<AuthState>()(
       isDemoMode: false,
 
       loginWithGoogle: async () => {
-        // In a real app, this would involve integrating with a Google OAuth provider (e.g., using Supabase Auth, Firebase Auth, or a custom backend)
-        // For this example, we'll simulate a successful login with mock data.
-        console.log('Simulating Google Login...');
-        set({
-          user: mockUser,
-          isAuthenticated: true,
-          isDemoMode: false,
-        });
+        console.log('loginWithGoogle function called');
+        try {
+          console.log('Fetching http://localhost:8000/auth/google/login...');
+          const response = await fetch('http://localhost:8000/auth/google/login');
+          console.log('Fetch response:', response);
+          if (!response.ok) {
+            console.error('Error getting Google OAuth URL:', response.status, response.statusText);
+            return;
+          }
+          const data = await response.json();
+          console.log('Fetch data:', data);
+          if (data.url) {
+            console.log('Redirecting to:', data.url);
+            window.location.href = data.url;
+          } else {
+            console.error('Error getting Google OAuth URL:', data);
+          }
+        } catch (error) {
+          console.error('Error during Google login:', error);
+        }
       },
 
       logout: () => {
@@ -56,7 +74,15 @@ export const useAuthStore = create<AuthState>()(
 
       setDemoMode: () => {
         set({
-          user: mockUser, // Use mock user for demo mode
+          user: {
+            id: 'mock-user-id-123',
+            name: 'Demo User',
+            email: 'demo@example.com',
+            avatarUrl: 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1', // Example placeholder
+            username: 'demo_user', // Added mock username
+            isDemoMode: true,
+            isAuthenticated: true,
+          },
           isAuthenticated: true, // Treat demo mode as authenticated for app access
           isDemoMode: true,
         });

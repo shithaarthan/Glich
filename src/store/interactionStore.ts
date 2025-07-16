@@ -1,7 +1,11 @@
 import { create } from 'zustand';
+import { useAuthStore } from '@/store/authStore'; // Import useAuthStore to get JWT
 
 interface Post {
   id: string;
+  user_id: string; // Added user_id to match backend structure
+  prompt: string; // Renamed from call to prompt for clarity
+  created_at: string; // Added created_at
   amplifies: number;
   replies: number;
   isAmplified: boolean;
@@ -42,9 +46,11 @@ interface InteractionState {
   isSearching: boolean;
   
   // Post interactions
-  amplifyPost: (postId: string) => void;
-  addComment: (postId: string, comment: Omit<Comment, 'id' | 'timestamp' | 'replies'>) => void;
-  bookmarkPost: (postId: string) => void;
+  amplifyPost: (postId: string) => Promise<void>; // Make async for API calls
+  addComment: (postId: string, comment: Omit<Comment, 'id' | 'timestamp' | 'replies'>) => Promise<void>; // Make async
+  bookmarkPost: (postId: string) => Promise<void>; // Make async
+  createCall: (userId: string, prompt: string) => Promise<void>; // Added createCall
+  createEcho: (callId: string, responseId: string, userId: string, echoText: string) => Promise<void>; // Added createEcho
   
   // User interactions
   followUser: (userId: string) => void;
@@ -55,9 +61,21 @@ interface InteractionState {
   clearSearch: () => void;
   
   // Initialize post data
-  initializePost: (postId: string, initialData: Partial<Post>) => void;
+  initializePost: (postId: string, initialData: Partial<Post>) => Promise<void>;
   initializeUser: (userId: string, initialData: Partial<User>) => void;
 }
+
+// Helper function to get JWT token
+const getToken = () => {
+  // Assuming token is stored in localStorage or accessible via useAuthStore
+  // For simplicity, let's try localStorage first. If not found, consider authStore.
+  const token = localStorage.getItem('supabase.auth.token');
+  if (token) return token;
+  // Fallback or alternative way to get token if needed
+  // const { accessToken } = useAuthStore.getState(); // This might not work directly here due to hook rules
+  // return accessToken;
+  return null;
+};
 
 export const useInteractionStore = create<InteractionState>((set, get) => ({
   posts: {},
@@ -69,54 +87,165 @@ export const useInteractionStore = create<InteractionState>((set, get) => ({
   },
   isSearching: false,
 
-  amplifyPost: (postId: string) => {
+  amplifyPost: async (postId: string) => {
+    const token = getToken();
+    if (!token) {
+      console.error("No auth token found for amplifyPost");
+      return;
+    }
+
     set((state) => {
       const post = state.posts[postId];
       if (!post) return state;
       
+      // Optimistically update local state
       return {
         posts: {
           ...state.posts,
           [postId]: {
             ...post,
             isAmplified: !post.isAmplified,
-            amplifies: post.isAmplified ? post.amplifies - 1 : post.amplifies + 1
+            amplifies: post.amplifies ? post.amplifies - 1 : post.amplifies + 1
           }
         }
       };
     });
-  },
 
-  addComment: (postId: string, comment: Omit<Comment, 'id' | 'timestamp' | 'replies'>) => {
-    set((state) => {
-      const post = state.posts[postId];
-      if (!post) return state;
-      
-      const newComment: Comment = {
-        ...comment,
-        id: Date.now().toString(),
-        timestamp: new Date(),
-        replies: []
-      };
-      
-      return {
-        posts: {
-          ...state.posts,
-          [postId]: {
-            ...post,
-            comments: [...post.comments, newComment],
-            replies: post.replies + 1
-          }
+    try {
+      const response = await fetch(`/api/calls/${postId}/amplify`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      };
-    });
+      });
+      
+      if (!response.ok) {
+        // Handle error: revert optimistic update or show error message
+        console.error("Failed to amplify post:", response.statusText);
+        // Revert optimistic update if necessary
+        set((state) => {
+          const post = state.posts[postId];
+          if (!post) return state;
+          return {
+            posts: {
+              ...state.posts,
+              [postId]: {
+                ...post,
+                isAmplified: post.isAmplified, // Revert to original state
+                amplifies: post.amplifies ? post.amplifies + 1 : post.amplifies - 1 // Revert count
+              }
+            }
+          };
+        });
+        return;
+      }
+      
+      const result = await response.json();
+      // Optionally update state with backend result if it contains more accurate data
+      // For now, optimistic update is sufficient if backend just confirms success
+      console.log("Amplify successful:", result);
+
+    } catch (error) {
+      console.error("Error during amplifyPost API call:", error);
+      // Revert optimistic update if necessary
+      set((state) => {
+        const post = state.posts[postId];
+        if (!post) return state;
+        return {
+          posts: {
+            ...state.posts,
+            [postId]: {
+              ...post,
+              isAmplified: post.isAmplified, // Revert to original state
+              amplifies: post.amplifies ? post.amplifies + 1 : post.amplifies - 1 // Revert count
+            }
+          }
+        };
+      });
+    }
   },
 
-  bookmarkPost: (postId: string) => {
+  addComment: async (postId: string, comment: Omit<Comment, 'id' | 'timestamp' | 'replies'>) => {
+    const token = getToken();
+    const { user } = useAuthStore.getState(); // Get user from auth store
+
+    if (!token || !user) {
+      console.error("No auth token or user found for addComment");
+      return;
+    }
+
+    const newCommentData = {
+      call_id: postId, // postId is the call_id
+      user_id: user.id,
+      response_text: comment.content
+    };
+
+    try {
+      const response = await fetch('/api/responses', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newCommentData)
+      });
+
+      if (!response.ok) {
+        console.error("Failed to add comment:", response.statusText);
+        // Handle error: show message to user
+        return;
+      }
+
+      const result = await response.json();
+      
+      // Update local state with the new comment from backend
+      set((state) => {
+        const post = state.posts[postId];
+        if (!post) return state;
+        
+        const addedComment: Comment = {
+          id: result.response.id, // Use ID from backend
+          author: {
+            name: user.name || 'Demo User',
+            username: user.username || 'demo_user', // Use username from authStore
+            avatar: user.avatarUrl || 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg'
+          },
+          content: comment.content,
+          timestamp: new Date(result.response.created_at), // Use timestamp from backend
+          replies: []
+        };
+        
+        return {
+          posts: {
+            ...state.posts,
+            [postId]: {
+              ...post,
+              comments: [...post.comments, addedComment],
+              replies: post.replies + 1
+            }
+          }
+        };
+      });
+
+    } catch (error) {
+      console.error("Error during addComment API call:", error);
+      // Handle error: show message to user
+    }
+  },
+
+  bookmarkPost: async (postId: string) => {
+    const token = getToken();
+    if (!token) {
+      console.error("No auth token found for bookmarkPost");
+      return;
+    }
+
     set((state) => {
       const post = state.posts[postId];
       if (!post) return state;
       
+      // Optimistically update local state
       return {
         posts: {
           ...state.posts,
@@ -127,6 +256,177 @@ export const useInteractionStore = create<InteractionState>((set, get) => ({
         }
       };
     });
+
+    try {
+      const response = await fetch(`/api/calls/${postId}/bookmark`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        // Handle error: revert optimistic update or show error message
+        console.error("Failed to bookmark post:", response.statusText);
+        // Revert optimistic update if necessary
+        set((state) => {
+          const post = state.posts[postId];
+          if (!post) return state;
+          return {
+            posts: {
+              ...state.posts,
+              [postId]: {
+                ...post,
+                isBookmarked: post.isBookmarked // Revert to original state
+              }
+            }
+          };
+        });
+        return;
+      }
+      
+      const result = await response.json();
+      // Optionally update state with backend result if it contains more accurate data
+      console.log("Bookmark successful:", result);
+
+    } catch (error) {
+      console.error("Error during bookmarkPost API call:", error);
+      // Revert optimistic update if necessary
+      set((state) => {
+        const post = state.posts[postId];
+        if (!post) return state;
+        return {
+          posts: {
+            ...state.posts,
+            [postId]: {
+              ...post,
+              isBookmarked: post.isBookmarked // Revert to original state
+            }
+          }
+        };
+      });
+    }
+  },
+
+  createCall: async (userId: string, prompt: string) => {
+    const token = getToken();
+    if (!token || !userId) {
+      console.error("No auth token or user ID found for createCall");
+      return;
+    }
+
+    const newCallData = {
+      user_id: userId,
+      prompt: prompt
+    };
+
+    try {
+      const response = await fetch('/api/calls', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newCallData)
+      });
+
+      if (!response.ok) {
+        console.error("Failed to create call:", response.statusText);
+        // Handle error: show message to user
+        return;
+      }
+
+      const result = await response.json();
+      
+      // Update local state with the new call from backend
+      const createdCall: Post = {
+        id: result.call.id,
+        user_id: result.call.user_id,
+        prompt: result.call.prompt,
+        created_at: result.call.created_at,
+        // Initialize interaction-related fields
+        amplifies: 0,
+        replies: 0,
+        isAmplified: false,
+        isBookmarked: false,
+        comments: []
+      };
+      
+      set((state) => ({
+        posts: {
+          ...state.posts,
+          [createdCall.id]: createdCall
+        }
+      }));
+
+    } catch (error) {
+      console.error("Error during createCall API call:", error);
+      // Handle error: show message to user
+    }
+  },
+
+  createEcho: async (callId: string, responseId: string, userId: string, echoText: string) => {
+    const token = getToken();
+    if (!token || !userId) {
+      console.error("No auth token or user ID found for createEcho");
+      return;
+    }
+
+    const newEchoData = {
+      call_id: callId,
+      response_id: responseId,
+      user_id: userId,
+      // echoText is not directly sent to the backend's POST /echoes endpoint as per current backend definition.
+      // If echoText needs to be stored, the backend schema/endpoint would need modification.
+    };
+
+    try {
+      const response = await fetch('/api/echoes', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newEchoData)
+      });
+
+      if (!response.ok) {
+        console.error("Failed to create echo:", response.statusText);
+        // Handle error: show message to user
+        return;
+      }
+
+      const result = await response.json();
+      
+      // Update local state with the new echo from backend
+      // The backend returns an 'echo' object. We need to map this to the 'Post' structure.
+      // This mapping might be problematic as 'Post' has 'prompt' and 'response', while 'echo' might just be a reference.
+      // For now, I'll create a simplified 'Post' object for the store, using placeholders for prompt/response.
+      const createdEcho: Post = {
+        id: result.echo.id,
+        user_id: result.echo.user_id,
+        prompt: 'Echoed Call', // Placeholder, as echo doesn't have a direct prompt in backend
+        created_at: result.echo.created_at,
+        // Initialize interaction-related fields
+        amplifies: 0,
+        replies: 0,
+        isAmplified: false,
+        isBookmarked: false,
+        comments: []
+      };
+      
+      set((state) => ({
+        posts: {
+          ...state.posts,
+          [createdEcho.id]: createdEcho
+        }
+      }));
+
+    } catch (error) {
+      console.error("Error during createEcho API call:", error);
+      // Handle error: show message to user
+    }
   },
 
   followUser: (userId: string) => {
@@ -165,38 +465,43 @@ export const useInteractionStore = create<InteractionState>((set, get) => ({
     });
   },
 
-  searchContent: (query: string) => {
+  searchContent: async (query: string) => {
     set({ isSearching: true });
-    
-    // Mock search - in real app, this would be an API call
-    setTimeout(() => {
-      const mockResults = {
-        posts: [
-          {
-            id: '1',
-            author: { name: 'AI Whisperer', username: 'ai_whisperer', avatar: 'https://images.pexels.com/photos/1858175/pexels-photo-1858175.jpeg' },
-            call: 'What is artificial intelligence?',
-            response: 'AI is the simulation of human intelligence in machines...',
-            tags: ['#AI', '#technology']
-          }
-        ],
-        users: [
-          {
-            id: '1',
-            name: 'AI Whisperer',
-            username: 'ai_whisperer',
-            avatar: 'https://images.pexels.com/photos/1858175/pexels-photo-1858175.jpeg',
-            bio: 'AI enthusiast and researcher'
-          }
-        ],
-        tags: ['#AI', '#technology', '#machine-learning']
-      };
-      
+    const token = getToken();
+    if (!token) {
+      console.error("No auth token found for searchContent");
+      set({ isSearching: false });
+      return;
+    }
+    try {
+      const response = await fetch(`/api/search?query=${query}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(query)
+      });
+
+      if (!response.ok) {
+        console.error("Failed to search content:", response.statusText);
+        set({ isSearching: false });
+        return;
+      }
+
+      const result = await response.json();
+      // Map the backend results to the searchResults state
       set({
-        searchResults: mockResults,
+        searchResults: {
+          posts: result.posts || [], // Assuming the backend returns a 'posts' array
+          users: result.users || [], // Assuming the backend returns a 'users' array
+          tags: [] // No tag search implemented yet
+        },
         isSearching: false
       });
-    }, 1000);
+    } catch (error) {
+      console.error("Error during searchContent API call:", error);
+      set({ isSearching: false });
+    }
   },
 
   clearSearch: () => {
@@ -210,21 +515,100 @@ export const useInteractionStore = create<InteractionState>((set, get) => ({
     });
   },
 
-  initializePost: (postId: string, initialData: Partial<Post>) => {
-    set((state) => ({
-      posts: {
-        ...state.posts,
-        [postId]: {
-          id: postId,
-          amplifies: 0,
-          replies: 0,
-          isAmplified: false,
-          isBookmarked: false,
-          comments: [],
-          ...initialData
+  initializePost: async (postId: string, initialData: Partial<Post>) => {
+    const token = getToken();
+    if (!token) {
+      console.error("No auth token found for initializePost");
+      set((state) => ({
+        posts: {
+          ...state.posts,
+          [postId]: {
+            id: postId,
+            user_id: '', // Placeholder, will be fetched or set
+            prompt: '', // Placeholder
+            created_at: '', // Placeholder
+            amplifies: 0,
+            replies: 0,
+            isAmplified: false,
+            isBookmarked: false,
+            comments: [],
+            ...initialData
+          }
         }
+      }));
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/calls/${postId}/interactions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        console.error("Failed to fetch interaction data:", response.statusText);
+        set((state) => ({
+          posts: {
+            ...state.posts,
+            [postId]: {
+              id: postId,
+              user_id: '', // Placeholder, will be fetched or set
+              prompt: '', // Placeholder
+              created_at: '', // Placeholder
+              amplifies: 0,
+              replies: 0,
+              isAmplified: false,
+              isBookmarked: false,
+              comments: [],
+              ...initialData
+            }
+          }
+        }));
+        return;
       }
-    }));
+
+      const result = await response.json();
+
+      set((state) => ({
+        posts: {
+          ...state.posts,
+          [postId]: {
+            id: postId,
+            user_id: '', // Placeholder, will be fetched or set
+            prompt: '', // Placeholder
+            created_at: '', // Placeholder
+            amplifies: result.amplifies || 0,
+            replies: result.replies || 0,
+            isAmplified: result.is_amplified || false,
+            isBookmarked: result.is_bookmarked || false,
+            comments: result.comments || [],
+            ...initialData
+          }
+        }
+      }));
+
+    } catch (error) {
+      console.error("Error during initializePost API call:", error);
+      set((state) => ({
+        posts: {
+          ...state.posts,
+          [postId]: {
+            id: postId,
+            user_id: '', // Placeholder, will be fetched or set
+            prompt: '', // Placeholder
+            created_at: '', // Placeholder
+            amplifies: 0,
+            replies: 0,
+            isAmplified: false,
+            isBookmarked: false,
+            comments: [],
+            ...initialData
+          }
+        }
+      }));
+    }
   },
 
   initializeUser: (userId: string, initialData: Partial<User>) => {

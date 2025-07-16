@@ -28,7 +28,6 @@ const Sidebar: React.FC = () => {
 
   const handleCreateEcho = () => {
     openCreateEchoModal();
-    closeSidebar(); // Close sidebar on mobile after action
   };
 
   return (
@@ -46,16 +45,10 @@ const Sidebar: React.FC = () => {
 
       <motion.aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border p-6 flex flex-col",
-          "lg:relative lg:translate-x-0 lg:opacity-100 lg:flex lg:min-w-[256px]",
-          {
-            "translate-x-0 opacity-100": isSidebarOpen,
-            "-translate-x-full opacity-0 lg:translate-x-0 lg:opacity-100": !isSidebarOpen,
-          }
+          "fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border p-6 flex-col h-screen",
+          "transition-transform duration-300 ease-in-out",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
-        initial={false}
-        animate={isSidebarOpen || (typeof window !== 'undefined' && window.innerWidth >= 1024) ? "visible" : "hidden"}
-        variants={sidebarVariants}
       >
         <div className="flex items-center space-x-3 mb-8">
           <FaBrain className="text-primary" size={32} />
@@ -79,7 +72,6 @@ const Sidebar: React.FC = () => {
             <Link
               key={item.name}
               to={item.path}
-              onClick={closeSidebar}
               className={cn(
                 "flex items-center space-x-3 p-3 rounded-lg transition-colors duration-200",
                 "hover:bg-border hover:text-primary",
@@ -109,7 +101,6 @@ const Sidebar: React.FC = () => {
             className="w-full flex items-center justify-center space-x-2"
             onClick={() => {
               logout();
-              closeSidebar();
             }}
           >
             <FaSignOutAlt size={18} />

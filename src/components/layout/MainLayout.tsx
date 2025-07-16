@@ -5,20 +5,23 @@ import Header from './Header';
 import CreateEchoModal from '@/components/modals/CreateEchoModal';
 import EditProfileModal from '@/components/modals/EditProfileModal';
 import { cn } from '@/lib/utils';
+import { useUIStore } from '@/store/uiStore';
 
 const MainLayout: React.FC = () => {
+  const { isSidebarOpen } = useUIStore();
+
   return (
     <div className="flex min-h-screen bg-background text-text">
       <Sidebar />
       
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={cn(
+        "flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out",
+        isSidebarOpen ? "lg:ml-64" : "ml-0"
+      )}>
         <Header />
         
-        <main className={cn(
-          "flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-8",
-          "ml-0 lg:ml-[280px]" // Dynamic margin: ml-0 on mobile, ml-[280px] on lg and up
-        )}>
-          <div className="max-w-8xl mx-auto">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+          <div className="max-w-7xl mx-auto w-full">
             <Outlet />
           </div>
         </main>

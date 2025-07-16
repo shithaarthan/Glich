@@ -1,64 +1,173 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import InteractiveEchoCard from '@/components/InteractiveEchoCard';
 import EnhancedSearchbar from '@/components/EnhancedSearchbar';
+import Button from '@/components/ui/Button';
+import { useAuthStore } from '@/store/authStore';
+import { useInteractionStore } from '@/store/interactionStore';
 
-const mockPosts = [
-  {
-    id: 1,
-    author: {
-      name: 'AI Whisperer',
-      username: 'ai_whisperer',
-      avatar: 'https://images.pexels.com/photos/1858175/pexels-photo-1858175.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-    },
-    call: 'Write a short story about a sentient coffee machine that dreams of becoming a poet.',
-    response: 'The espresso machine, whom the baristas called "Steamy Dan," hummed a low, melancholic tune. Its internal monologue was a torrent of iambic pentameter, a stark contrast to the gurgling and hissing it produced. "Oh, to be more than a vessel for the bean," it thought, dispensing a perfect latte. "To craft a verse as rich, as dark, as this fine brew I stream."',
-    specimen: 'ChatGPT-4o',
-    tags: ['#creative', '#funny'],
-    amplifies: 125,
-    replies: 12
-  },
-  {
-    id: 2,
-    author: {
-      name: 'Code Conjurer',
-      username: 'code_conjurer',
-      avatar: 'https://images.pexels.com/photos/5439471/pexels-photo-5439471.jpeg?auto=compress&cs=tinysrgb&w=800'
-    },
-    call: 'Explain recursion to me as if I were a golden retriever.',
-    response: 'Okay, listen up, buddy! You see this ball? I throw the ball. You fetch the ball. You bring it back. Good boy! Now... what if, when you brought the ball back, I told you to go fetch the ball again? And again? That\'s recursion! It\'s doing the same "fetch" trick until I say "stop!" Now, who\'s a good programmer?',
-    specimen: 'Claude 3 Sonnet',
-    tags: ['#tech', '#ELI5'],
-    amplifies: 482,
-    replies: 45
-  },
-  {
-    id: 3,
-    author: {
-      name: 'Pixel Prophet',
-      username: 'pixel_prophet',
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=800'
-    },
-    call: 'Create a haiku about debugging code at 3 AM.',
-    response: 'Red error messages\nFlicker in the darkness deep\nSemicolon hides',
-    specimen: 'GPT-3.5',
-    tags: ['#programming', '#poetry', '#debugging'],
-    amplifies: 298,
-    replies: 33
-  }
-];
+interface PostData {
+  id: string | number;
+  author: {
+    name: string;
+    username?: string;
+    avatar: string;
+  };
+  call: string;
+  response: string;
+  specimen?: string;
+  tags?: string[];
+  amplifies: number;
+  replies: number;
+}
 
 const Feed: React.FC = () => {
+  const [posts, setPosts] = useState<PostData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuthStore();
+  const { initializePost } = useInteractionStore();
+
+  // Mock demo posts
+  const demoPosts: PostData[] = [
+    {
+      id: '1',
+      author: {
+        name: 'Demo User',
+        username: 'demo_user',
+        avatar: 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+      },
+      call: 'What is the meaning of life?',
+      response: '42',
+      specimen: 'Mock Specimen',
+      tags: ['#AI', '#demo'],
+      amplifies: 10,
+      replies: 5,
+    },
+    {
+      id: '2',
+      author: {
+        name: 'Demo User',
+        username: 'demo_user',
+        avatar: 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+      },
+      call: 'Is AI going to take over the world?',
+      response: 'Probably not, but it might make some interesting art.',
+      specimen: 'Mock Specimen',
+      tags: ['#AI', '#demo'],
+      amplifies: 20,
+      replies: 10,
+    },
+  ];
+
+  useEffect(() => {
+    const fetchFeedData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const headers: HeadersInit = {};
+        if (user && user.isAuthenticated && user.isDemoMode !== undefined && !user.isDemoMode) {
+          headers['Authorization'] = `Bearer ${localStorage.getItem('supabase.auth.token')}`;
+        }
+
+        // Fetch demo data if in demo mode
+        if (user && user.isDemoMode) {
+          setPosts(demoPosts);
+          setLoading(false);
+          return;
+        }
+
+        const callsResponse = await fetch('/api/calls', {
+          headers,
+        });
+        if (!callsResponse.ok) throw new Error(`HTTP error! status: ${callsResponse.status}`);
+        const callsData = await callsResponse.json();
+
+        if (!callsData.calls || callsData.calls.length === 0) {
+          setPosts([]);
+          setLoading(false);
+          return;
+        }
+
+        const postPromises = callsData.calls.map(async (call: any) => {
+          const responseResponse = await fetch(`/api/responses?call_id=${call.id}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+            }
+          });
+          const responseData = await responseResponse.json();
+          const primaryResponse = responseData.responses?.[0] || { response_text: 'No response available.' };
+
+          let authorProfile = { name: 'Unknown User', username: 'unknown', avatar: 'https://via.placeholder.com/40' };
+          const profileResponse = await fetch(`/api/profiles/${call.user_id}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+            }
+          });
+
+          if (profileResponse.ok) {
+            const profileData = await profileResponse.json();
+            authorProfile = profileData.profile || { name: 'Unknown User', username: 'unknown', avatar: 'https://via.placeholder.com/40' };
+          } else {
+            console.error("Failed to fetch profile:", profileResponse.statusText);
+          }
+
+          initializePost(call.id.toString(), {
+            amplifies: 0,
+            replies: 0,
+            comments: []
+          });
+
+          return {
+            id: call.id,
+            author: {
+              name: authorProfile.name,
+              username: authorProfile.username,
+              avatar: authorProfile.avatar || 'https://via.placeholder.com/40'
+            },
+            call: call.prompt,
+            response: primaryResponse.response_text,
+            specimen: 'Mock Specimen',
+            tags: ['#AI', '#generated'],
+            amplifies: call.amplifies || 0,
+            replies: call.replies || 0
+          };
+        });
+
+        const fetchedPosts = await Promise.all(postPromises);
+        setPosts(fetchedPosts);
+      } catch (err: any) {
+        console.error("Failed to fetch feed data:", err);
+        setError(err.message || "Failed to load feed.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchFeedData();
+    } else {
+      setPosts([]);
+      setLoading(false);
+    }
+  }, [user, initializePost]);
+
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
-      {/* Enhanced Search */}
       <div className="mb-8">
         <EnhancedSearchbar className="w-full" />
       </div>
-
-      {/* Feed Content */}
       <div className="space-y-6">
-        {mockPosts.map(post => (
-          <InteractiveEchoCard key={post.id} post={post} />
+        {loading && <p className="text-center text-textSecondary">Loading feed...</p>}
+        {error && <p className="text-center text-red-500">{error}</p>}
+        {!loading && !error && posts.length === 0 && (
+          <p className="text-center text-textSecondary">No posts found. Be the first to create one!</p>
+        )}
+        {!loading && !error && posts.map(post => (
+          <InteractiveEchoCard
+            key={post.id}
+            post={post}
+          />
         ))}
       </div>
     </div>

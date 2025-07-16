@@ -1,7 +1,10 @@
 import React from 'react';
 import CommunityCard from '@/components/CommunityCard';
 import Input from '@/components/ui/Input';
-import { Search } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
+import Button from '@/components/ui/Button';
+import CreateCommunityModal from '@/components/modals/CreateCommunityModal';
+import { useCommunityModalStore } from '@/store/communityModalStore';
 
 const mockCommunities = [
   { id: 1, name: 'AI Comedy Club', description: 'For the funniest and most unhinged AI generations.', banner: 'https://images.pexels.com/photos/7130560/pexels-photo-7130560.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', members: 12500 },
@@ -11,11 +14,20 @@ const mockCommunities = [
 ];
 
 const Communities: React.FC = () => {
+  const { openModal } = useCommunityModalStore();
+
   return (
     <div className="animate-fade-in">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Communities</h1>
-        <p className="text-text-muted">Find your niche and connect with fellow AI enthusiasts.</p>
+      <CreateCommunityModal />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-bold mb-2">Communities</h1>
+          <p className="text-text-muted">Find your niche and connect with fellow AI enthusiasts.</p>
+        </div>
+        <Button onClick={openModal} className="w-full sm:w-auto">
+          <Plus size={20} className="mr-2" />
+          Create Community
+        </Button>
       </div>
       <div className="relative mb-8">
         <Input placeholder="Search for communities..." className="pl-10" />

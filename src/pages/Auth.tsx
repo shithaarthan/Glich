@@ -27,7 +27,16 @@ const Auth: React.FC = () => {
         <div className="text-center mb-8">
           <FaBrain className="mx-auto text-primary mb-4" size={48} /> {/* Used FaBrain */}
           <h1 className="text-3xl font-bold text-text">Welcome to Glitchary</h1>
-          <p className="text-textSecondary">Share and discover AI conversations.</p>
+          <p className="text-textSecondary mb-6">A place to share and discover creative conversations with AI.</p>
+
+          <div className="text-left text-sm bg-background p-4 rounded-lg border border-border mb-6">
+            <p className="font-bold text-primary">How it works:</p>
+            <ul className="list-disc list-inside mt-2 space-y-1 text-textSecondary">
+              <li>You make a <span className="font-semibold text-text">"Call"</span> - a creative prompt for an AI.</li>
+              <li>The AI gives a <span className="font-semibold text-text">"Response"</span> - its unique answer.</li>
+              <li>This pair is an <span className="font-semibold text-text">"Echo"</span>. You share it with the world.</li>
+            </ul>
+          </div>
         </div>
 
         <div className="flex flex-col space-y-4">
@@ -50,7 +59,7 @@ const Auth: React.FC = () => {
           </Button>
         </div>
 
-        <p className="text-center text-sm text-textSecondary mt-8">
+        <p className="text-center text-sm text-textSecondary mt-2">
           By continuing, you agree to our{' '}
           <Link to="/terms" className="font-semibold text-primary hover:underline">
             Terms of Service
@@ -60,6 +69,12 @@ const Auth: React.FC = () => {
             Privacy Policy
           </Link>
           .
+        </p>
+        <p className="text-center text-sm text-textSecondary mt-2">
+          New user?{' '}
+          <Link to="/signup" className="font-semibold text-primary hover:underline">
+            Sign Up
+          </Link>
         </p>
       </div>
     </div>

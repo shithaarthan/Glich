@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import Profile from './pages/Profile';
 import Communities from './pages/Communities';
+import Community from './pages/Community';
 import TuneIn from './pages/TuneIn';
 import Activity from './pages/Activity';
 
@@ -67,6 +68,7 @@ function App() {
             <Route path="feed" element={<Feed />} />
             <Route path="profile/:userId" element={<Profile />} />
             <Route path="communities" element={<Communities />} />
+            <Route path="community/:id" element={<Community />} />
             <Route path="tune-in" element={<TuneIn />} />
             <Route path="activity" element={<Activity />} />
           </Route>

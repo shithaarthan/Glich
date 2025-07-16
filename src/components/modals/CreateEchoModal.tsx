@@ -3,11 +3,14 @@ import { useForm } from 'react-hook-form';
 import Modal from '@/components/ui/Modal';
 import { useModalStore } from '@/store/modalStore';
 import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 
 interface CreateEchoFormData {
   call: string;
   response: string;
+  specimen: string;
+  tags: string;
 }
 
 const CreateEchoModal: React.FC = () => {
@@ -33,7 +36,7 @@ const CreateEchoModal: React.FC = () => {
       title="Create a new Echo"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="font-mono text-sm">
+        <div className="text-sm">
           <label className="text-primary font-bold mb-2 uppercase tracking-wider block">THE CALL</label>
           <Textarea 
             {...register('call', { required: 'The call is required' })}
@@ -42,13 +45,30 @@ const CreateEchoModal: React.FC = () => {
           {errors.call && <p className="text-red-500 text-sm mt-1">{errors.call.message}</p>}
         </div>
         
-        <div className="font-mono text-sm">
+        <div className="text-sm">
           <label className="text-secondary font-bold mb-2 uppercase tracking-wider block">THE RETURN</label>
           <Textarea 
             {...register('response', { required: 'The response is required' })}
             placeholder="What strange wisdom did it offer back?" 
           />
           {errors.response && <p className="text-red-500 text-sm mt-1">{errors.response.message}</p>}
+        </div>
+
+        <div className="text-sm">
+          <label className="text-accent font-bold mb-2 uppercase tracking-wider block">Specimen</label>
+          <Input
+            {...register('specimen', { required: 'Specimen is required' })}
+            placeholder="e.g., GPT-4, Claude, etc."
+          />
+          {errors.specimen && <p className="text-red-500 text-sm mt-1">{errors.specimen.message}</p>}
+        </div>
+
+        <div className="text-sm">
+          <label className="text-accent font-bold mb-2 uppercase tracking-wider block">Tags</label>
+          <Input
+            {...register('tags')}
+            placeholder="e.g., #AI, #art, etc."
+          />
         </div>
         
         <div className="flex justify-end space-x-3">

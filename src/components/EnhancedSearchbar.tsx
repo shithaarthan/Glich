@@ -139,8 +139,8 @@ const EnhancedSearchbar: React.FC<EnhancedSearchbarProps> = ({
                         />
                         <span className="text-xs text-textSecondary">@{post.author.username}</span>
                       </div>
-                      <p className="text-sm text-text truncate">{post.call}</p>
-                      {post.tags && (
+                      <p className="text-sm text-text truncate">{post.prompt}</p>
+                      {/*post.tags && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {post.tags.slice(0, 3).map((tag, index) => (
                             <span 
@@ -151,14 +151,14 @@ const EnhancedSearchbar: React.FC<EnhancedSearchbarProps> = ({
                             </span>
                           ))}
                         </div>
-                      )}
+                      )*/}
                     </div>
                   ))}
                 </div>
               )}
 
               {/* Tags */}
-              {searchResults.tags.length > 0 && (
+              {/*searchResults.tags.length > 0 && (
                 <div>
                   <h4 className="text-xs font-semibold text-textSecondary uppercase tracking-wider px-2 py-1 mb-2">
                     <Hash size={12} className="inline mr-1" />
@@ -180,7 +180,7 @@ const EnhancedSearchbar: React.FC<EnhancedSearchbarProps> = ({
                     ))}
                   </div>
                 </div>
-              )}
+              )*/}
 
               {/* No Results */}
               {!hasResults && query.trim() && !isSearching && (

@@ -2,15 +2,17 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from './Button';
+import { cn } from '@/lib/utils';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
   title: string;
+  className?: string;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title, className }) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -26,7 +28,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             transition={{ ease: 'easeInOut', duration: 0.3 }}
-            className="bg-surface border border-border rounded-xl w-full max-w-2xl shadow-2xl"
+            className={cn("bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl", className)}
             onClick={(e) => e.stopPropagation()}
           >
             <header className="flex items-center justify-between p-4 border-b border-border">

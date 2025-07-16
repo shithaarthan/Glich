@@ -20,9 +20,11 @@ interface InteractiveEchoCardProps {
     amplifies: number;
     replies: number;
   };
+  onOpenResponseModal?: (callId: string) => void; // Added onOpenResponseModal prop
+  onOpenEchoModal?: (callId: string) => void; // Added onOpenEchoModal prop
 }
 
-const InteractiveEchoCard: React.FC<InteractiveEchoCardProps> = ({ post }) => {
+const InteractiveEchoCard: React.FC<InteractiveEchoCardProps> = ({ post, onOpenResponseModal, onOpenEchoModal }) => {
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState('');
   const { user } = useAuthStore();
@@ -147,6 +149,22 @@ const InteractiveEchoCard: React.FC<InteractiveEchoCardProps> = ({ post }) => {
           >
             <MessageSquare size={16} />
             <span>{currentReplies}</span>
+          </button>
+
+          {/* Add Response Button */}
+          <button
+            onClick={() => onOpenResponseModal && onOpenResponseModal(postId)}
+            className="flex items-center space-x-2 text-sm text-textSecondary hover:text-primary transition-colors"
+          >
+            Respond
+          </button>
+
+          {/* Create Echo Button */}
+          <button
+            onClick={() => onOpenEchoModal && onOpenEchoModal(postId)}
+            className="flex items-center space-x-2 text-sm text-textSecondary hover:text-primary transition-colors"
+          >
+            Create Echo
           </button>
           
           <button
