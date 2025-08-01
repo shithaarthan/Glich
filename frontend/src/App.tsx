@@ -72,64 +72,38 @@ function App() {
   const { setUser, setSession, setLoading, clearAuth, hasProfile } = useAuthStore();
 
   useEffect(() => {
-    // Initial auth check
-    const checkInitialAuth = async () => {
-      setLoading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
+    setLoading(true);
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
         if (session) {
           const { data: profile, error } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', session.user.id)
+            .eq('user_id', session.user.id) // Corrected query
             .single();
 
           if (error && error.code !== 'PGRST116') {
-            console.error('Error fetching profile:', error);
+            console.error('Error fetching profile on auth change:', error);
             clearAuth();
           } else if (profile) {
             setSession(session);
             setUser(profile);
+            useAuthStore.getState().setHasProfile(true); // Correctly set hasProfile
           } else {
+            // User is signed in, but has no profile
             setSession(session);
-            useAuthStore.setState({ hasProfile: false });
+            // We still need to set a user object for the ID to be available on the create profile page
+            setUser({
+              id: session.user.id,
+              username: session.user.email || '',
+              avatar_url: session.user.user_metadata?.avatar_url || '',
+              bio: '',
+            });
+            useAuthStore.getState().setHasProfile(false);
           }
         } else {
-          clearAuth();
-        }
-      } catch (error) {
-        console.error('Error checking initial auth:', error);
-        clearAuth();
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkInitialAuth();
-
-    // Set up auth state listener
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setLoading(true);
-        if (event === 'SIGNED_IN' && session) {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-          if (error && error.code !== 'PGRST116') {
-            console.error('Error fetching profile:', error);
-            clearAuth();
-          } else if (profile) {
-            setSession(session);
-            setUser(profile);
-          } else {
-            setSession(session);
-            useAuthStore.setState({ hasProfile: false });
-          }
-        } else if (event === 'SIGNED_OUT') {
+          // This handles SIGNED_OUT event and the initial state where there's no session
           clearAuth();
         }
         setLoading(false);
