@@ -5,15 +5,49 @@ import { FcGoogle } from 'react-icons/fc';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
+import { supabase } from '@/lib/supabaseClient';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { loginWithGoogle, setDemoMode } = useAuthStore();
+  const { loginWithGoogle, setDemoMode, setSession } = useAuthStore();
 
   const handleGoogleLogin = async () => {
-    console.log('Initiating Google Login...');
-    await loginWithGoogle();
-    navigate('/feed');
+    try {
+      console.log('Initiating Google Login...');
+      await loginWithGoogle();
+    } catch (error) {
+      console.error('Google login failed:', error);
+      // Let the OAuth flow handle navigation
+    }
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    if (!email || !password) {
+      alert('Please enter both email and password');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.session) {
+        setSession(data.session);
+        // Check for profile in AuthCallback
+        window.location.href = '/auth/callback';
+      }
+    } catch (error: any) {
+      alert(error.message || 'Login failed');
+    }
   };
 
   const handleDemoMode = () => {
@@ -31,14 +65,14 @@ const Login: React.FC = () => {
           <p className="text-text-muted">Log in to continue to Glitchary.</p>
         </div>
         
-        <form className="space-y-6">
+        <form className="space-y-6" onSubmit={handleEmailLogin}>
           <div>
             <label className="block text-sm font-medium text-text-muted mb-2">Email</label>
-            <Input type="email" placeholder="you@example.com" />
+            <Input type="email" name="email" placeholder="you@example.com" required />
           </div>
           <div>
             <label className="block text-sm font-medium text-text-muted mb-2">Password</label>
-            <Input type="password" placeholder="••••••••" />
+            <Input type="password" name="password" placeholder="••••••••" required />
           </div>
           <Button type="submit" className="w-full" size="lg">
             Log In

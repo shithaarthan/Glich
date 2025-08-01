@@ -41,23 +41,18 @@ const Profile: React.FC = () => {
   // Check if this is the current user's profile
   const isOwnProfile = userId === user?.id;
 
-  // For demo purposes, use the current user data
-  const profileUser = user || {
-    id: 'demo-user',
-    name: 'Demo User',
-    email: 'demo@example.com',
-    avatarUrl: 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
-  };
-
-  const mockUserData = {
-    ...profileUser,
-    username: 'demo_user',
-    banner: 'https://images.pexels.com/photos/325185/pexels-photo-325185.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    bio: 'Curator of digital oddities and AI-generated chaos. Celebrating the ghosts in the machine.',
-    stats: {
-      echos: 24,
-      amplifies: '12.k',
-      followers: 5800,
+  // Use the user from the auth store as the source of truth.
+  // Provide sensible defaults for a consistent experience.
+  const profileUser = {
+    id: user?.id || 'demo-user',
+    username: user?.username || 'anonymous',
+    avatar_url: user?.avatar_url || 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+    bio: user?.bio || 'No bio yet.',
+    banner: 'https://images.pexels.com/photos/325185/pexels-photo-325185.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2', // Banner can remain mock for now
+    stats: { // Stats can also be mock for this phase
+      echos: 10,
+      amplifies: '1.k',
+      followers: 1200,
     },
   };
 
@@ -70,13 +65,13 @@ const Profile: React.FC = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="h-48 sm:h-64 rounded-xl bg-cover bg-center mb-[-60px] sm:mb-[-80px]" style={{ backgroundImage: `url(${mockUserData.banner})` }}></div>
+      <div className="h-48 sm:h-64 rounded-xl bg-cover bg-center mb-[-60px] sm:mb-[-80px]" style={{ backgroundImage: `url(${profileUser.banner})` }}></div>
       
       <div className="px-4 sm:px-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end">
           <img 
-            src={mockUserData.avatarUrl || 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'} 
-            alt={mockUserData.name || 'User'} 
+            src={profileUser.avatar_url} 
+            alt={profileUser.username} 
             className="w-32 h-32 sm:w-40 sm:h-40 rounded-full object-cover border-4 border-background" 
           />
           <div className="flex space-x-2 mt-4 sm:mt-0">
@@ -93,23 +88,23 @@ const Profile: React.FC = () => {
               <FollowButton 
                 userId={userId || 'demo-user'} 
                 initialFollowing={false}
-                initialFollowers={mockUserData.stats.followers}
+                initialFollowers={profileUser.stats.followers}
               />
             )}
           </div>
         </div>
 
         <div className="mt-4">
-          <h1 className="text-2xl sm:text-3xl font-bold">{mockUserData.name}</h1>
-          <p className="text-text-muted">@{mockUserData.username}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">{profileUser.username}</h1>
+          <p className="text-text-muted">@{profileUser.username}</p>
         </div>
 
-        <p className="mt-4 max-w-2xl">{mockUserData.bio}</p>
+        <p className="mt-4 max-w-2xl">{profileUser.bio}</p>
 
         <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 text-text-muted">
-          <p><strong className="text-text">{mockUserData.stats.echos}</strong> Echos</p>
-          <p><strong className="text-text">{mockUserData.stats.amplifies}</strong> Amplifies</p>
-          <p><strong className="text-text">{mockUserData.stats.followers.toLocaleString()}</strong> Followers</p>
+          <p><strong className="text-text">{profileUser.stats.echos}</strong> Echos</p>
+          <p><strong className="text-text">{profileUser.stats.amplifies}</strong> Amplifies</p>
+          <p><strong className="text-text">{profileUser.stats.followers.toLocaleString()}</strong> Followers</p>
         </div>
       </div>
 

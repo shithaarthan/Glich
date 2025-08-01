@@ -67,13 +67,14 @@ interface InteractionState {
 
 // Helper function to get JWT token
 const getToken = () => {
+  const { isDemoMode } = useAuthStore.getState();
+  if (isDemoMode) {
+    // In demo mode, we don't use or store authentication tokens.
+    return null;
+  }
   // Assuming token is stored in localStorage or accessible via useAuthStore
-  // For simplicity, let's try localStorage first. If not found, consider authStore.
   const token = localStorage.getItem('supabase.auth.token');
   if (token) return token;
-  // Fallback or alternative way to get token if needed
-  // const { accessToken } = useAuthStore.getState(); // This might not work directly here due to hook rules
-  // return accessToken;
   return null;
 };
 
@@ -112,7 +113,7 @@ export const useInteractionStore = create<InteractionState>((set, get) => ({
     });
 
     try {
-      const response = await fetch(`/api/calls/${postId}/amplify`, {
+      const response = await fetch(`http://localhost:8000/api/calls/${postId}/amplify`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -182,7 +183,7 @@ export const useInteractionStore = create<InteractionState>((set, get) => ({
     };
 
     try {
-      const response = await fetch('/api/responses', {
+      const response = await fetch('http://localhost:8000/api/responses', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -207,9 +208,9 @@ export const useInteractionStore = create<InteractionState>((set, get) => ({
         const addedComment: Comment = {
           id: result.response.id, // Use ID from backend
           author: {
-            name: user.name || 'Demo User',
+            name: user.username || 'Demo User',
             username: user.username || 'demo_user', // Use username from authStore
-            avatar: user.avatarUrl || 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg'
+            avatar: user.avatar_url || 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg'
           },
           content: comment.content,
           timestamp: new Date(result.response.created_at), // Use timestamp from backend
@@ -258,7 +259,7 @@ export const useInteractionStore = create<InteractionState>((set, get) => ({
     });
 
     try {
-      const response = await fetch(`/api/calls/${postId}/bookmark`, {
+      const response = await fetch(`http://localhost:8000/api/calls/${postId}/bookmark`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -322,7 +323,7 @@ export const useInteractionStore = create<InteractionState>((set, get) => ({
     };
 
     try {
-      const response = await fetch('/api/calls', {
+      const response = await fetch('http://localhost:8000/api/calls', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -382,7 +383,7 @@ export const useInteractionStore = create<InteractionState>((set, get) => ({
     };
 
     try {
-      const response = await fetch('/api/echoes', {
+      const response = await fetch('http://localhost:8000/api/echoes', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -474,7 +475,7 @@ export const useInteractionStore = create<InteractionState>((set, get) => ({
       return;
     }
     try {
-      const response = await fetch(`/api/search?query=${query}`, {
+      const response = await fetch(`http://localhost:8000/api/search?query=${query}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -540,7 +541,7 @@ export const useInteractionStore = create<InteractionState>((set, get) => ({
     }
 
     try {
-      const response = await fetch(`/api/calls/${postId}/interactions`, {
+      const response = await fetch(`http://localhost:8000/api/calls/${postId}/interactions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

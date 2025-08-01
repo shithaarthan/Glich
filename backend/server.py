@@ -1,8 +1,9 @@
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from gotrue.types import User
 import os
 
 
@@ -19,7 +20,7 @@ app.add_middleware(
 # Explicit host and port configuration
 import uvicorn
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 load_dotenv()
 
@@ -31,29 +32,26 @@ if not url or not key:
 
 supabase: Client = create_client(url, key)
 
-async def get_current_user(request: Request):
-    auth_header = request.headers.get("Authorization")
-    if not auth_header:
-        raise HTTPException(status_code=401, detail="Authorization header missing")
-
-    token = auth_header.split(" ")[1] if auth_header.startswith("Bearer ") else None
+async def get_current_user(request: Request) -> User:
+    token = request.cookies.get("sb-access-token")
     if not token:
-        raise HTTPException(status_code=401, detail="Invalid authorization format")
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
     try:
         user_response = supabase.auth.get_user(token)
         if user_response.user:
-            return user_response.user.id
-        elif user_response.error:
-            raise HTTPException(status_code=401, detail=user_response.error.get("message", "Invalid or expired token"))
-        else:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            return user_response.user
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Token verification failed: {str(e)}")
 
 @app.get("/api/")
 async def read_root():
     return {"message": "Welcome to the backend!"}
+
+@app.get("/api/test")
+async def test_endpoint():
+    return {"message": "Test endpoint reached!"}
 
 @app.get("/api/profiles")
 async def get_profiles():
@@ -95,19 +93,58 @@ async def google_signup_url():
         return JSONResponse({"error": str(e)})
 
 @app.get("/api/auth/google/callback")
-async def google_callback(code: str):
+async def google_callback(request: Request):
     try:
-        response = supabase.auth.exchange_code_for_session(code)
-        if response.session:
-            return {"message": "Google authentication successful", "session": response.session}
-        elif response.error:
-            raise HTTPException(status_code=400, detail=response.error.get("message", "Error exchanging code for session"))
+        code = request.query_params.get("code")
+        if not code:
+            raise HTTPException(status_code=400, detail="Authorization code not found in callback.")
+
+        # Exchange the authorization code for a session
+        session_response = supabase.auth.exchange_code_for_session({"auth_code": code})
+
+        if session_response.session:
+            session = session_response.session
+            user = session.user
+            
+            # First, set the auth cookies regardless of profile status
+            from fastapi.responses import RedirectResponse
+            
+            # Check if a profile already exists for this user
+            existing_profile = supabase.table("profiles").select("user_id").eq("user_id", user.id).execute()
+
+            if existing_profile.data:
+                # Profile exists, redirect to feed
+                redirect_url = f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000')}/feed"
+            else:
+                # New user, redirect to create profile page
+                redirect_url = f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000')}/create-profile"
+
+            response = RedirectResponse(url=redirect_url)
+            
+            # Set cookies for the session
+            response.set_cookie(
+                key="sb-access-token", value=session.access_token, httponly=True, samesite="lax",
+                secure=False, max_age=session.expires_in
+            )
+            response.set_cookie(
+                key="sb-refresh-token", value=session.refresh_token, httponly=True, samesite="lax",
+                secure=False, max_age=604800
+            )
+            
+            return response
+        elif session_response.error:
+            # Redirect to login page on error
+            from fastapi.responses import RedirectResponse
+            error_msg = session_response.error.message if hasattr(session_response.error, 'message') else "auth_failed"
+            return RedirectResponse(url=f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000')}/login?error={error_msg}")
         else:
             raise HTTPException(status_code=500, detail="Unexpected response from Supabase during OAuth callback.")
     except HTTPException as http_exc:
         raise http_exc
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An internal error occurred during OAuth callback: {str(e)}")
+        # Redirect to login page on error
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000')}/login?error=auth_failed")
 
 @app.post("/api/profiles")
 async def create_profile(
@@ -115,15 +152,21 @@ async def create_profile(
     username: str,
     bio: str = None,
     avatar_url: str = None,
-    current_user_id: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    if user_id != current_user_id:
+    if user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden: User ID mismatch")
     
     try:
-        existing_profile = supabase.table("profiles").select("*").eq("user_id", user_id).execute()
-        if existing_profile.data:
+        # Check if a profile already exists for this user_id
+        existing_profile_by_user_id = supabase.table("profiles").select("*").eq("user_id", user_id).execute()
+        if existing_profile_by_user_id.data:
             raise HTTPException(status_code=409, detail="Profile already exists for this user.")
+
+        # Check if the username is already taken
+        existing_profile_by_username = supabase.table("profiles").select("*").eq("username", username).execute()
+        if existing_profile_by_username.data:
+            raise HTTPException(status_code=409, detail="Username already taken. Please choose a different one.")
 
         profile_data = {
             "user_id": user_id,
@@ -401,6 +444,12 @@ async def bookmark_call(post_id: str, current_user_id: str = Depends(get_current
                 raise HTTPException(status_code=400, detail="Failed to bookmark call")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred during bookmark: {str(e)}")
+
+@app.post("/api/auth/logout")
+async def logout(response: Response):
+    response.delete_cookie(key="sb-access-token")
+    response.delete_cookie(key="sb-refresh-token")
+    return {"message": "Logout successful"}
 
 @app.get("/api/search")
 async def search_content(query: str, current_user_id: str = Depends(get_current_user)):

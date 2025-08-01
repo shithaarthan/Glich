@@ -65,21 +65,31 @@ const Feed: React.FC = () => {
       setError(null);
 
       try {
-        const headers: HeadersInit = {};
-        if (user && user.isAuthenticated && user.isDemoMode !== undefined && !user.isDemoMode) {
-          headers['Authorization'] = `Bearer ${localStorage.getItem('supabase.auth.token')}`;
-        }
-
-        // Fetch demo data if in demo mode
-        if (user && user.isDemoMode) {
+        // Use demo data if in demo mode
+        if (user?.isDemoMode) {
           setPosts(demoPosts);
+          demoPosts.forEach(post => initializePost(post.id.toString(), {
+            amplifies: post.amplifies,
+            replies: post.replies,
+            comments: []
+          }));
           setLoading(false);
           return;
         }
 
-        const callsResponse = await fetch('/api/calls', {
-          headers,
-        });
+        // Fetch real data if not in demo mode
+        const token = localStorage.getItem('supabase.auth.token');
+        if (!token) {
+          setError("Authentication token not found.");
+          setLoading(false);
+          return;
+        }
+
+        const headers: HeadersInit = {
+          'Authorization': `Bearer ${token}`
+        };
+
+        const callsResponse = await fetch('http://localhost:8000/api/calls', { headers });
         if (!callsResponse.ok) throw new Error(`HTTP error! status: ${callsResponse.status}`);
         const callsData = await callsResponse.json();
 
@@ -90,31 +100,25 @@ const Feed: React.FC = () => {
         }
 
         const postPromises = callsData.calls.map(async (call: any) => {
-          const responseResponse = await fetch(`/api/responses?call_id=${call.id}`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
-            }
-          });
+          // Fetch responses for each call
+          const responseResponse = await fetch(`http://localhost:8000/api/responses?call_id=${call.id}`, { headers });
           const responseData = await responseResponse.json();
           const primaryResponse = responseData.responses?.[0] || { response_text: 'No response available.' };
 
+          // Fetch profile for each call's author
+          const profileResponse = await fetch(`http://localhost:8000/api/profiles/${call.user_id}`, { headers });
           let authorProfile = { name: 'Unknown User', username: 'unknown', avatar: 'https://via.placeholder.com/40' };
-          const profileResponse = await fetch(`/api/profiles/${call.user_id}`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
-            }
-          });
-
           if (profileResponse.ok) {
             const profileData = await profileResponse.json();
-            authorProfile = profileData.profile || { name: 'Unknown User', username: 'unknown', avatar: 'https://via.placeholder.com/40' };
+            authorProfile = profileData.profile;
           } else {
             console.error("Failed to fetch profile:", profileResponse.statusText);
           }
 
+          // Initialize post interactions in the store
           initializePost(call.id.toString(), {
-            amplifies: 0,
-            replies: 0,
+            amplifies: call.amplifies || 0,
+            replies: call.replies || 0,
             comments: []
           });
 
@@ -147,10 +151,11 @@ const Feed: React.FC = () => {
     if (user) {
       fetchFeedData();
     } else {
+      // If no user, clear posts and stop loading
       setPosts([]);
       setLoading(false);
     }
-  }, [user, initializePost]);
+  }, [user?.id, user?.isDemoMode, initializePost]);
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">

@@ -9,10 +9,10 @@ const SignUp: React.FC = () => {
   const navigate = useNavigate();
   const { loginWithGoogle, setDemoMode } = useAuthStore();
 
-  const handleGoogleSignIn = async () => {
-    console.log('Initiating Google Sign-In...');
-    await loginWithGoogle();
-    navigate('/feed');
+  const handleGoogleSignUp = async () => {
+    console.log('Initiating Google Sign-Up...');
+    await loginWithGoogle(); // Use the same function for both signup and login
+    // Note: The actual navigation happens in the OAuth callback
   };
 
   const handleDemoMode = () => {
@@ -54,7 +54,7 @@ const SignUp: React.FC = () => {
             variant="primary" // Using primary for emphasis
             size="lg"
             className="w-full flex items-center justify-center space-x-2"
-            onClick={handleGoogleSignIn} // Changed handler to Google sign-in
+            onClick={handleGoogleSignUp}
           >
             <FcGoogle size={24} /> {/* Added Google icon */}
             <span>Sign up with Google</span> {/* Changed text */}

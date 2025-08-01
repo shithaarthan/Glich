@@ -1,91 +1,100 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '../lib/supabaseClient';
+import { Session } from '@supabase/supabase-js';
 
-interface User {
+interface UserProfile {
   id: string;
-  name: string | null;
-  email: string | null;
-  avatarUrl: string | null;
-  username?: string; // Added username to match interactionStore
+  username: string;
+  avatar_url: string;
+  bio: string;
   isDemoMode?: boolean;
-  isAuthenticated?: boolean;
 }
 
 interface AuthState {
-  user: User | null;
+  user: UserProfile | null;
+  session: Session | null;
   isAuthenticated: boolean;
+  hasProfile: boolean; // New state to track if profile is created
+  loading: boolean;
   isDemoMode: boolean;
+  setUser: (user: UserProfile | null) => void;
+  setSession: (session: Session | null) => void;
+  setLoading: (loading: boolean) => void;
   loginWithGoogle: () => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  clearAuth: () => void;
   setDemoMode: () => void;
   clearDemoMode: () => void;
 }
-
-// Mock user data for demo mode and initial state
-const mockUser = {
-  id: 'mock-user-id-123',
-  name: 'Demo User',
-  email: 'demo@example.com',
-  avatarUrl: 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1', // Example placeholder
-  username: 'demo_user', // Added mock username
-  isDemoMode: true,
-  isAuthenticated: true,
-};
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
+      session: null,
       isAuthenticated: false,
+      hasProfile: false, // Initialize new state
+      loading: true,
       isDemoMode: false,
 
+      setUser: (user) => set({ user, isAuthenticated: !!user, hasProfile: !!user }), // Update hasProfile
+      setSession: (session) => set({ session, isAuthenticated: !!session }),
+      setLoading: (loading) => set({ loading }),
+
       loginWithGoogle: async () => {
-        console.log('loginWithGoogle function called');
         try {
-          console.log('Fetching /api/auth/google/login...');
-          const response = await fetch('/api/auth/google/login');
-          console.log('Fetch response:', response);
-          if (!response.ok) {
-            console.error('Error getting Google OAuth URL:', response.status, response.statusText);
-            return;
-          }
-          const data = await response.json();
-          console.log('Fetch data:', data);
-          if (data.url) {
-            console.log('Redirecting to:', data.url);
-            window.location.href = data.url;
-          } else {
-            console.error('Error getting Google OAuth URL:', data);
-          }
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: `${window.location.origin}/auth/callback`,
+            },
+          });
+          if (error) throw error;
         } catch (error) {
-          console.error('Error during Google login:', error);
+          console.error('Error with Google OAuth:', error);
+          throw error;
         }
       },
 
-      logout: () => {
+      logout: async () => {
+        try {
+          await supabase.auth.signOut();
+        } catch (error) {
+          console.error('Error logging out:', error);
+        } finally {
+          set({
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            hasProfile: false, // Clear hasProfile on logout
+            isDemoMode: false,
+          });
+        }
+      },
+
+      clearAuth: () => {
         set({
           user: null,
+          session: null,
           isAuthenticated: false,
-          isDemoMode: false,
+          hasProfile: false, // Clear hasProfile
+          loading: false,
         });
-        // In a real app, you would also clear tokens from local storage/cookies and redirect to the login page.
-        window.location.href = '/auth'; // Redirect to auth page
       },
 
       setDemoMode: () => {
         set({
           user: {
             id: 'mock-user-id-123',
-            name: 'Demo User',
-            email: 'demo@example.com',
-            avatarUrl: 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1', // Example placeholder
-            username: 'demo_user', // Added mock username
-            isDemoMode: true,
-            isAuthenticated: true,
+            username: 'Demo User',
+            avatar_url: 'https://images.pexels.com/photos/1542083/pexels-photo-1542083.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+            bio: 'This is a demo account.',
           },
-          isAuthenticated: true, // Treat demo mode as authenticated for app access
+          isAuthenticated: true,
           isDemoMode: true,
         });
+        window.location.href = '/feed';
       },
 
       clearDemoMode: () => {
@@ -95,9 +104,13 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'glitchary-auth-storage', // name of slice-specific storage (default is 'state')
-      // Optionally, you can specify a storage mechanism like localStorage or sessionStorage
-      // getStorage: () => sessionStorage, // uncomment to use sessionStorage
+      name: 'glitchary-auth-storage',
+      partialize: (state) => {
+        if (state.isDemoMode) {
+          return { isDemoMode: true };
+        }
+        return { user: state.user, session: state.session, isAuthenticated: state.isAuthenticated, hasProfile: state.hasProfile, isDemoMode: state.isDemoMode };
+      },
     }
   )
 );
