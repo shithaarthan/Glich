@@ -6,7 +6,7 @@ import { useAuthStore } from '../store/authStore';
 const AuthCallback = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setUser, setSession, setLoading } = useAuthStore();
+  const { setUser, setSession, setLoading, setHasProfile } = useAuthStore();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -50,6 +50,7 @@ const AuthCallback = () => {
             throw profileError;
           } else {
             setUser(profile);
+            setHasProfile(true);
             navigate('/feed');
           }
         } else {

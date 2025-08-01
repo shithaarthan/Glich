@@ -19,6 +19,7 @@ interface AuthState {
   loading: boolean;
   isDemoMode: boolean;
   setUser: (user: UserProfile | null) => void;
+  setHasProfile: (hasProfile: boolean) => void;
   setSession: (session: Session | null) => void;
   setLoading: (loading: boolean) => void;
   loginWithGoogle: () => Promise<void>;
@@ -38,7 +39,8 @@ export const useAuthStore = create<AuthState>()(
       loading: true,
       isDemoMode: false,
 
-      setUser: (user) => set({ user, isAuthenticated: !!user, hasProfile: !!user }), // Update hasProfile
+      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      setHasProfile: (hasProfile) => set({ hasProfile }),
       setSession: (session) => set({ session, isAuthenticated: !!session }),
       setLoading: (loading) => set({ loading }),
 

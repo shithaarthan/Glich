@@ -9,7 +9,7 @@ import json
 from urllib.parse import urlparse, parse_qs
 
 # Test configuration
-FRONTEND_URL = "http://localhost:3000"
+FRONTEND_URL = "http://localhost:5173"
 BACKEND_URL = "http://localhost:8000"
 
 def test_endpoints():
@@ -50,12 +50,23 @@ def test_endpoints():
             data = response.json()
             if "url" in data:
                 print("✅ Google login endpoint working")
-                # Check redirect URL
-                redirect_url = data["url"]
-                if "/auth/callback" in redirect_url:
-                    print("✅ Redirect URL points to auth/callback")
-                else:
-                    print("❌ Redirect URL incorrect")
+                # Check redirect URL more robustly
+                redirect_url_str = data["url"]
+                try:
+                    parsed_url = urlparse(redirect_url_str)
+                    query_params = parse_qs(parsed_url.query)
+
+                    if 'redirect_to' in query_params:
+                        redirect_to_val = query_params['redirect_to'][0]
+                        parsed_redirect_to = urlparse(redirect_to_val)
+                        if parsed_redirect_to.path == '/auth/callback':
+                            print("✅ Redirect URL points to auth/callback")
+                        else:
+                            print(f"❌ Redirect URL path is incorrect: {parsed_redirect_to.path}")
+                    else:
+                        print("❌ 'redirect_to' not in query params of the returned URL")
+                except Exception as e:
+                    print(f"❌ Failed to parse redirect URL: {e}")
             else:
                 print("❌ Google login response missing URL")
         else:

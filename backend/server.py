@@ -33,7 +33,18 @@ if not url or not key:
 supabase: Client = create_client(url, key)
 
 async def get_current_user(request: Request) -> User:
-    token = request.cookies.get("sb-access-token")
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Not authenticated: Missing Authorization header")
+
+    # The header should be in the format "Bearer <token>"
+    try:
+        scheme, token = auth_header.split()
+        if scheme.lower() != "bearer":
+            raise HTTPException(status_code=401, detail="Invalid authentication scheme.")
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Authorization header format.")
+
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 

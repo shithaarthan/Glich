@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
+import { authenticatedFetch } from '@/lib/api';
 
 const CreateProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -65,9 +66,8 @@ const CreateProfile: React.FC = () => {
       // and get back a URL. For this implementation, we'll just use the existing avatar_url or a placeholder.
       const finalAvatarUrl = user?.avatar_url; // This would be replaced with the uploaded URL
 
-      const response = await fetch('/api/profiles', {
+      const response = await authenticatedFetch('/api/profiles', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
           username,
